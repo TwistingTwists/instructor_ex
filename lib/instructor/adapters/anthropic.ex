@@ -14,7 +14,7 @@ defmodule Instructor.Adapters.Anthropic do
     {_, params} = Keyword.pop(params, :max_retries)
     {_, params} = Keyword.pop(params, :mode)
     # stream = Keyword.get(params, :stream, false)
-    params = Enum.into(params, %{})
+    params = Map.new(params)
 
     # if stream do
     #   do_streaming_chat_completion(params, config)
@@ -27,7 +27,10 @@ defmodule Instructor.Adapters.Anthropic do
     options =
       Keyword.merge(http_options(config),
         json: params,
-        headers: [{"x-api-key", api_key(config)}, {"anthropic-version", " 2023-06-01"}]
+        headers: [
+          {"x-api-key", api_key(config)},
+          {"anthropic-version", " 2023-06-01"}
+        ]
       )
 
     response = Req.post!(url(config), options)
@@ -53,11 +56,11 @@ defmodule Instructor.Adapters.Anthropic do
   #   "type" => "message",
   #   "usage" => %{"input_tokens" => 243, "output_tokens" => 132}
   # }
-  defp to_openai_response(params) do
+  defp to_openai_response(%{"content" => [%{"text" => text}]} = _params) do
     %{
       "choices" => [
         %{
-          "message" => params
+          "message" => %{"content" => text}
         }
       ]
     }
@@ -69,7 +72,7 @@ defmodule Instructor.Adapters.Anthropic do
   defp api_key(config), do: Keyword.fetch!(config, :api_key)
   defp http_options(config), do: Keyword.fetch!(config, :http_options)
 
-  defp config() do
+  defp config do
     base_config = Application.get_env(:instructor, :anthropic, [])
 
     default_config = [
